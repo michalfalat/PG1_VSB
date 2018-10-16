@@ -1,5 +1,6 @@
 #pragma once
 #define IOR_AIR 1.000293f
+#include "vector3.h"
 
 struct Vertex3f { float x, y, z; }; // a single vertex position structure matching certain format
 
@@ -12,6 +13,14 @@ struct Triangle3ui { unsigned int v0, v1, v2; }; // indicies of a single triangl
 struct RTC_ALIGN( 16 ) Color4f
 {
 	struct { float r, g, b, a; }; // a = 1 means that the pixel is opaque
+	Color4f(const float r, const float g, const float b, const float a) : r(r), g(g), b(b), a(a) { }
+	Color4f(const float* v);
+
+	friend Color4f operator*(Color4f &c, float a);
+	friend Color4f operator*(float a, Color4f &c);
+	friend Color4f operator*(Vector3 &v, Color4f &c);
+	friend Color4f operator*(Color4f &u, Color4f &v);
+	friend Color4f operator+(Color4f &c1, Color4f &c2);
 };
 
 struct Color3f { float r, g, b; };
@@ -28,3 +37,5 @@ inline void reorient_against(Normal3f & n, const float v_x, const float v_y, con
 		n.z *= -1;
 	}
 }
+
+

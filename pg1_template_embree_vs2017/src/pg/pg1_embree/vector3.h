@@ -98,6 +98,7 @@ public:
 	\return Hodnotu \f$\mathbf{u}_x \mathbf{v}_x + \mathbf{u}_y \mathbf{v}_y + \mathbf{u}_z \mathbf{v}_z)\f$.
 	*/
 	float DotProduct( const Vector3 & v ) const;	
+	float PosDotProduct(const Vector3 &v) const;
 
 	//! Index nejvìtší složky vektoru.
 	/*!

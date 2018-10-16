@@ -46,6 +46,15 @@ public:
 	*/	
 	Surface * surface();
 
+	//! Vypoète normálu trojúhelníka v zadaném bodì.
+	/*!
+	 * \param u baricentrická souøadnice bodu, pro který má být normála interpolována.
+	 * \param v baricentrická souøadnice bodu, pro který má být normála interpolována.
+	 *
+	 * \return Normála trojúhelníka v zadaném bodì.
+	*/
+	Vector3 normal(const float u, const float v);
+
 protected:
 
 private:

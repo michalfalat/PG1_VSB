@@ -3,6 +3,7 @@
 #include "objloader.h"
 #include "tutorials.h"
 #include "material.h"
+#include "Sphericalbackground.h"
 
 Raytracer::Raytracer(const int width, const int height,
 	const float fov_y, const Vector3 view_from, const Vector3 view_at,
@@ -11,6 +12,8 @@ Raytracer::Raytracer(const int width, const int height,
 	InitDeviceAndScene(config);
 
 	camera_ = Camera(width, height, fov_y, view_from, view_at);
+
+	background_ = SphericalBackground("../../../data/background.jpg");
 }
 
 Vector3 get_hit_point(const RTCRay &ray)
@@ -54,6 +57,41 @@ int Raytracer::ReleaseDeviceAndScene()
 
 inline Vector3 reflect(const Vector3 & v, const Vector3 & n) {
 	return (2.0f*(v.DotProduct(n))) *n - v;
+}
+
+float Raytracer::trace_shadow_ray(const Vector3 & p, const Vector3 & l_d, const float dist) {
+	RTCHit hit;
+	hit.geomID = RTC_INVALID_GEOMETRY_ID;
+	hit.primID = RTC_INVALID_GEOMETRY_ID;
+
+	RTCRay ray = RTCRay();
+	ray.org_x = p.x; // ray origin
+	ray.org_y = p.y;
+	ray.org_z = p.z;
+
+	ray.dir_x = l_d.x;
+	ray.dir_y = l_d.y;
+	ray.dir_z = l_d.z;
+
+	ray.tnear = 0.1f;
+	ray.tfar = dist;
+
+	ray.time = 0.0f;
+
+	ray.mask = 0; // can be used to mask out some geometries for some rays
+	ray.id = 0; // identify a ray inside a callback function
+	ray.flags = 0; // reserved
+
+	RTCIntersectContext context;
+	rtcInitIntersectContext(&context);
+	rtcOccluded1(scene_, &context, &ray);
+
+	if (ray.tfar < dist) {
+		return 0.0;
+	}
+	else {
+		return 1.0;
+	}
 }
 
 void Raytracer::LoadScene(const std::string file_name)
@@ -122,7 +160,19 @@ void Raytracer::LoadScene(const std::string file_name)
 
 Color4f Raytracer::get_pixel(const int x, const int y, const float t)
 {
-	return trace_ray(x, y, t);
+	RTCHit hit;
+	hit.geomID = RTC_INVALID_GEOMETRY_ID;
+	hit.primID = RTC_INVALID_GEOMETRY_ID;
+	hit.Ng_x = 0.0f;
+	hit.Ng_y = 0.0f;
+	hit.Ng_z = 0.0f;
+
+	// merge ray and hit structures
+	MyRTCRayHit my_ray_hit;
+	my_ray_hit.ray_hit.ray = camera_.GenerateRay(x + 0.5f, y + 0.5f);
+	my_ray_hit.ray_hit.hit = hit;
+
+	return trace_ray(my_ray_hit, 10, x, y, t);
 	// TODO generate primary ray and perform ray cast on the scene
 	// setup a hit
 	//RTCHit hit;
@@ -188,21 +238,11 @@ Color4f Raytracer::get_pixel(const int x, const int y, const float t)
 	//}
 }
 
-Color4f Raytracer::trace_ray(const int x, const int y, const float t) {
+Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth, const int x, const int y, const float t) {
 	// TODO generate primary ray and perform ray cast on the scene
 	// setup a hit
-	RTCHit hit;
-	hit.geomID = RTC_INVALID_GEOMETRY_ID;
-	hit.primID = RTC_INVALID_GEOMETRY_ID;
-	hit.Ng_x = 0.0f;
-	hit.Ng_y = 0.0f;
-	hit.Ng_z = 0.0f;
 
-	// merge ray and hit structures
-	MyRTCRayHit my_ray_hit;
-	my_ray_hit.ray_hit.ray = camera_.GenerateRay(x + 0.5f, y + 0.5f);
-	my_ray_hit.ray_hit.hit = hit;
-
+	
 	// intersect ray with the scene
 	RTCIntersectContext context;
 	rtcInitIntersectContext(&context);
@@ -228,52 +268,70 @@ Color4f Raytracer::trace_ray(const int x, const int y, const float t) {
 		Material * material = (Material *)(rtcGetGeometryUserData(geometry));
 
 		//const Triangle & triangle = surfaces_[ray_hit]
-		Vector3 light_pos = Vector3(0, 0, 300);
+		Vector3 light_pos = Vector3(0, 0, 30);
 		Vector3 light_color = Vector3(1, 1, 1);
 
+		Vector3 p = get_hit_point(my_ray_hit.ray_hit.ray);
+		Vector3 l_d = light_pos - p;
+		l_d.Normalize();
+		p.Normalize();
+
+		// Get normal
+		Surface *surface = this->surfaces_.at(my_ray_hit.ray_hit.hit.geomID);
+		Triangle triangle = surface->get_triangle(my_ray_hit.ray_hit.hit.primID);
+
+		Vector3 normal_v = triangle.normal(my_ray_hit.ray_hit.hit.u, my_ray_hit.ray_hit.hit.v);
+		normal_v.Normalize();
+
+		if (depth <= 0) {
+			Vector3 n = Vector3(normal.x, normal.y, normal.z);
+			Vector3 v = Vector3(-my_ray_hit.ray_hit.ray.dir_x, -my_ray_hit.ray_hit.ray.dir_y, -my_ray_hit.ray_hit.ray.dir_y);
+			Vector3 l_r = reflect(l_d, n);
+
+			const float enlight = trace_shadow_ray(p, l_d, l_d.L2Norm());
+
+			Vector3 C = material->ambient*light_color +
+				enlight * material->diffuse * (max(0.0f, n.DotProduct(l_d))) * light_color +
+				enlight * material->specular * powf(max(0.0f, l_r.DotProduct(v)), 1);
+			return Color4f(C.x, C.y, C.z, 1.0f);
+		}
 
 		switch (material->shader_)
 		{
 		case Shader::NORMAL:
 		{
-			return Color4f{ normal.x * 0.5f + 0.5f, normal.y*0.5f + 0.5f, normal.z*0.5f + 0.5f, 1.0f };
+			return Color4f( normal.x * 0.5f + 0.5f, normal.y*0.5f + 0.5f, normal.z*0.5f + 0.5f, 1.0f );
 			break; 
 		}
 		case Shader::LAMBERT:
 		{
-			return Color4f{ 0.0f, 0.0f, 0.0f, 1.0f };
+			return Color4f( 0.0f, 0.0f, 0.0f, 1.0f );
 			break;
 		}
 		case Shader::PHONG:
 		{
-			Vector3 p = get_hit_point(my_ray_hit.ray_hit.ray);
-			Vector3 l_d = light_pos - p;
-			l_d.Normalize();
-			p.Normalize();
-
 			Vector3 n = Vector3(normal.x, normal.y, normal.z);
 			Vector3 v = Vector3(-my_ray_hit.ray_hit.ray.dir_x, -my_ray_hit.ray_hit.ray.dir_y, -my_ray_hit.ray_hit.ray.dir_y);
 			Vector3 l_r = reflect(l_d, n);
+
+			const float enlight = trace_shadow_ray(p, l_d, l_d.L2Norm());
 		
 			Vector3 C = material->ambient*light_color +
-				1 * material->diffuse * (max(0.0f, n.DotProduct(l_d))) * light_color +
-				1 * material->specular * powf(max(0.0f, l_r.DotProduct(v)), 1);
-			//return Color4f{ material->diffuse.x, material->diffuse.y, material->diffuse.z, 1.0f };
-			return Color4f{ C.x, C.y, C.z, 1.0f };
+				enlight * material->diffuse * (max(0.0f, n.DotProduct(l_d))) * light_color +
+				enlight * material->specular * powf(max(0.0f, l_r.DotProduct(v)), 1);
+			return Color4f( C.x, C.y, C.z, 1.0f );
 
 			break;
 		}
 		case Shader::GLASS:
 		{
-			Vector3 rd = Vector3(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+
+			Vector3 diffuse = Vector3(0.749019608f, 0.941176471f, 0.2f);
+			Vector3 rd = get_hit_point(my_ray_hit.ray_hit.ray);
 			rd.Normalize();
 
 			float n1 = my_ray_hit.ior;
-			float n2 = (n1 == IOR_AIR) ? material->ior : n1;
-
-			//Vector3 cos_01 = n * v;
-
-			Vector3 normal_v = Vector3(normal.x, normal.y, normal.z);
+			float n2 = (n1 == IOR_AIR) ? IOR_GLASS : n1;
 
 			// Calc cos_02
 			float cos_02 = (-normal_v).DotProduct(rd);
@@ -304,10 +362,10 @@ Color4f Raytracer::trace_ray(const int x, const int y, const float t) {
 			float sqrt_d = (1 - (n_d * n_d) * (1 - (cos_02 * cos_02)));
 
 			// Absolute reflection
-			//TODO finish
-			/*if (sqrt_d < 0.0f) {
-				return trace_ray(x, depth - 1) * 1.0f * diffuse;
-			}*/
+			Color4f temp = trace_ray(myReflectedRTCRayHit, depth - 1, x, y, t);
+			if (sqrt_d < 0.0f) {
+				return  diffuse * temp;
+			}
 
 			float cos_01 = sqrt(sqrt_d);
 
@@ -330,7 +388,7 @@ Color4f Raytracer::trace_ray(const int x, const int y, const float t) {
 			float coefRefract = 1.0f - coefReflect;
 
 			// Generate refracted ray
-			Vector3 vector = get_hit_point(my_ray_hit.ray_hit.ray);
+			vector = get_hit_point(my_ray_hit.ray_hit.ray);
 			RTCRay refractedRay = my_ray_hit.ray_hit.ray;
 			refractedRay.dir_x = lr.x;
 			refractedRay.dir_y = lr.y;
@@ -340,24 +398,32 @@ Color4f Raytracer::trace_ray(const int x, const int y, const float t) {
 			refractedRay.org_y = vector.y;
 			refractedRay.org_z = vector.z;
 
+
 			MyRTCRayHit myRefractedRTCRayHit = MyRTCRayHit{ refractedRay };
 
 			// Set IOR
 			myRefractedRTCRayHit.ior = n2;
 			myReflectedRTCRayHit.ior = n1;
 
-			Vector3 C = material->ambient*light_color +
-				1 * material->diffuse * (max(0.0f, n.DotProduct(l_d))) * light_color +
-				1 * material->specular * powf(max(0.0f, l_r.DotProduct(v)), 1);
-			//return Color4f{ material->diffuse.x, material->diffuse.y, material->diffuse.z, 1.0f };
-			return Color4f{ C.x, C.y, C.z, 1.0f };
+			Color4f temp1 = trace_ray(myReflectedRTCRayHit, depth - 1, x, y, t);
+			Color4f temp2 = trace_ray(myRefractedRTCRayHit, depth - 1, x, y, t);
+			Color4f temp3 = temp1 * coefReflect;
+			Color4f temp4 = temp2 * coefRefract;
+			Color4f temp5 = diffuse * temp3;
+			Color4f temp6 = diffuse * temp4;
 
-			return this->light_pos.ambient + calcColor(ray, mat, normal) + trace(reflectedRay, depth - 1) * mat->reflectivity * specular;
+			Color4f  finalC = temp5 + temp6;
+			Color4f reflected =  (finalC * material->reflectivity)  ;
+			reflected.a = 0.5f;
+			return reflected;
+
+			//return light_pos.ambient + calcColor(ray, mat, normal) + trace(reflectedRay, depth - 1) * mat->reflectivity * specular;
 			break;
 		}
 		default:
 		{
-			return Color4f{ 0.0f, 0.0f, 0.0f, 1.0f };
+
+			return Color4f( 0.0f, 0.0f, 0.0f, 1.0f );
 			break;
 		}
 		}
@@ -367,10 +433,12 @@ Color4f Raytracer::trace_ray(const int x, const int y, const float t) {
 		//rtcOf
 
 
-		return Color4f{ 0.0f, 0.0f, 0.0f, 1.0f };
+		return Color4f( 0.0f, 0.0f, 0.0f, 1.0f );
 	}
 	else {
-		return Color4f{ 0.0f, 0.0f, 0.0f, 1.0f };
+	Color3f bck = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+	//return background_.GetBackground(x, y, z);
+	return Color4f(bck.r, bck.g, bck.b, 1.0f);
 	}
 }
 

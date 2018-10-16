@@ -20,3 +20,12 @@ Surface * Triangle::surface()
 {	
 	return *reinterpret_cast<Surface **>( vertices_[0].pad ); // FIX: chybí verze pro 64bit
 }
+
+Vector3 Triangle::normal(const float u, const float v) {
+	Vector3 normal = u * vertices_[1].normal +
+		v * vertices_[2].normal +
+		(1.0f - u - v) * vertices_[0].normal;
+	normal.Normalize();
+
+	return normal;
+}

@@ -2,6 +2,8 @@
 #include "simpleguidx11.h"
 #include "surface.h"
 #include "camera.h"
+#include "structs.h"
+#include "Sphericalbackground.h"
 
 /*! \class Raytracer
 \brief General ray tracer class.
@@ -26,7 +28,9 @@ public:
 
 	Color4f get_pixel( const int x, const int y, const float t = 0.0f ) override;
 
-	Color4f trace_ray(const int x, const int y, const float t = 0.0f);
+	Color4f trace_ray(MyRTCRayHit ray, int depth, const int x, const int y, const float t = 0.0f);
+
+	float trace_shadow_ray(const Vector3 & p, const Vector3 & l_d, const float dist);
 
 	int Ui();
 
@@ -37,4 +41,5 @@ private:
 	RTCDevice device_;
 	RTCScene scene_;
 	Camera camera_;
+	SphericalBackground background_;
 };

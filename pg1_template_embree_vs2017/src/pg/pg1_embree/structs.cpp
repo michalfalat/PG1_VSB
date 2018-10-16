@@ -1,1 +1,33 @@
 #include "stdafx.h"
+#include "structs.h"
+#include "vector3.h"
+
+Color4f::Color4f(const float * v)
+{
+	assert(v != NULL);
+
+	r = v[0];
+	g = v[1];
+	b = v[2];
+	a = v[4];
+}
+
+Color4f operator*(Color4f &c, float a) {
+	return Color4f{ a * c.r, a * c.g, a * c.b, a * c.a };
+}
+
+Color4f operator*(float a, Color4f &c) {
+	return Color4f{ a * c.r, a * c.g, a * c.b, a * c.a };
+}
+
+Color4f operator*(Vector3 &v, Color4f &c) {
+	return Color4f{ v.x * c.r, v.y * c.g, v.z * c.b, c.a };
+}
+
+Color4f operator*(Color4f &u, Color4f &v) {
+	return Color4f{ u.r * v.r, u.g * v.g, u.b * v.b, u.a * v.a };
+}
+
+Color4f operator+(Color4f &c1, Color4f &c2) {
+	return Color4f{ c1.r + c2.r, c1.g + c2.g, c1.b + c2.b, c1.a + c2.a };
+}

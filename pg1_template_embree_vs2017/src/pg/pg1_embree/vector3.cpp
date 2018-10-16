@@ -58,6 +58,17 @@ float Vector3::DotProduct( const Vector3 & v ) const
 	return x * v.x + y * v.y + z * v.z;
 }
 
+float Vector3::PosDotProduct(const Vector3 &v) const {
+	Vector3 n = *this;
+
+	float dot = n.DotProduct(v);
+	if (dot < 0) {
+		return n.DotProduct(-v);
+	}
+
+	return dot;
+}
+
 char Vector3::LargestComponent( const bool absolute_value )
 {
 	const Vector3 d = ( absolute_value )? Vector3( abs( x ), abs( y ), abs( z ) ) : *this;
