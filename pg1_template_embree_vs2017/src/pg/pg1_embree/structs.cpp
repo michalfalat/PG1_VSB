@@ -31,3 +31,7 @@ Color4f operator*(Color4f &u, Color4f &v) {
 Color4f operator+(Color4f &c1, Color4f &c2) {
 	return Color4f{ c1.r + c2.r, c1.g + c2.g, c1.b + c2.b, c1.a + c2.a };
 }
+
+Color4f operator+(Color4f &c1, Vector3 &c2) {
+	return Color4f{ c1.r + c2.x, c1.g + c2.y, c1.b + c2.z, c1.a  };
+}
