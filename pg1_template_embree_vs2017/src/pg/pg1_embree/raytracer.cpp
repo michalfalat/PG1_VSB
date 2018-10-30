@@ -169,78 +169,36 @@ Color4f Raytracer::get_pixel(const int x, const int y, const float t)
 
 	// merge ray and hit structures
 	MyRTCRayHit my_ray_hit;
-	my_ray_hit.ray_hit.ray = camera_.GenerateRay(x + 0.5f, y + 0.5f);
 	my_ray_hit.ray_hit.hit = hit;
 
-	return trace_ray(my_ray_hit, 3, x, y, t);
-	// TODO generate primary ray and perform ray cast on the scene
-	// setup a hit
-	//RTCHit hit;
-	//hit.geomID = RTC_INVALID_GEOMETRY_ID;
-	//hit.primID = RTC_INVALID_GEOMETRY_ID;
-	//hit.Ng_x = 0.0f;
-	//hit.Ng_y = 0.0f;
-	//hit.Ng_z = 0.0f;
+	// Uniform supersampling
+	Color4f colorSum = Color4f(0.0f, 0.0f, 0.0f, 0.0f);
+	int size = 1;
 
-	//// merge ray and hit structures
-	//RTCRayHit ray_hit;
-	//ray_hit.ray = camera_.GenerateRay(x + 0.5f, y + 0.5f);
-	//ray_hit.hit = hit;
+	float offsetX = -0.5f;
+	float offsetY = -0.5f;
+	float offsetAddition = 1.0f / size;
 
-	//// intersect ray with the scene
-	//RTCIntersectContext context;
-	//rtcInitIntersectContext(&context);
-	//rtcIntersect1(scene_, &context, &ray_hit);
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size; j++) {
+			// Generate ray
+			my_ray_hit.ray_hit.ray = camera_.GenerateRay(x + offsetX, y + offsetY);
+			Color4f traced = trace_ray(my_ray_hit, 4, t);
+			colorSum = colorSum + traced;
 
-	//if (ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
-	//{
-	//	// we hit something
-	//	RTCGeometry geometry = rtcGetGeometry(scene_, ray_hit.hit.geomID);
-	//	Normal3f normal;
-	//	// get interpolated normal
-	//	rtcInterpolate0(geometry, ray_hit.hit.primID, ray_hit.hit.u, ray_hit.hit.v,
-	//		RTC_BUFFER_TYPE_VERTEX_ATTRIBUTE, 0, &normal.x, 3);
+			// Increase offset
+			offsetX += offsetAddition;
+		}
 
-	//	reorient_against(normal, ray_hit.ray.dir_x, ray_hit.ray.dir_y, ray_hit.ray.dir_z);
-	//	// and texture coordinates
-	//	Coord2f tex_coord;
-	//	rtcInterpolate0(geometry, ray_hit.hit.primID, ray_hit.hit.u, ray_hit.hit.v,
-	//		RTC_BUFFER_TYPE_VERTEX_ATTRIBUTE, 1, &tex_coord.u, 2);
-
-	//	/*printf("normal = (%0.3f, %0.3f, %0.3f)\n", normal.x, normal.y, normal.z);
-	//	printf("tex_coord = (%0.3f, %0.3f)\n", tex_coord.u, tex_coord.v);*/
-	//	Material * material = (Material *)(rtcGetGeometryUserData(geometry));
-
-	//	//const Triangle & triangle = surfaces_[ray_hit]
-	//	Vector3 light_pos = Vector3(0,0,300);
-	//	Vector3 light_color = Vector3(1,1,1);
-
-	//	Vector3 p = Vector3(ray_hit.ray.dir_x + ray_hit.ray.tfar * ray_hit.ray.dir_x,
-	//		ray_hit.ray.dir_y + ray_hit.ray.tfar * ray_hit.ray.dir_y,
-	//		ray_hit.ray.dir_z + ray_hit.ray.tfar * ray_hit.ray.dir_z);
-
-	//	Vector3 l_d  = light_pos - p;
-	//	l_d.Normalize();
-
-	//	Vector3 n = Vector3(normal.x, normal.y, normal.z);
-	//	Vector3 v = Vector3(-ray_hit.ray.dir_x, -ray_hit.ray.dir_y, -ray_hit.ray.dir_y);
-	//	Vector3 l_r = reflect(l_d, n);
-
-	//	Vector3 C = material->ambient*light_color +
-	//		1 * material->diffuse * (max(0.0f, n.DotProduct(l_d))) * light_color +
-	//		1 * material->specular * powf(max(0.0f, l_r.DotProduct(v)), 1);
-	//	//return Color4f{ material->diffuse.x, material->diffuse.y, material->diffuse.z, 1.0f };
-	//	return Color4f{ C.x, C.y, C.z, 1.0f };
-	//}
-	//else
-	//{
-	//	return Color4f{ 0.0f, 0.0f, 0.0f, 1.0f };
-	//}
+		// Reset offset
+		offsetX = -0.5f;
+		// Increase row offset
+		offsetY += offsetAddition;
+	}
+	return colorSum / SQR(size);
 }
 
-Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth, const int x, const int y, const float t) {
-	// TODO generate primary ray and perform ray cast on the scene
-	// setup a hit
+Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth, const float t) {
 
 	// intersect ray with the scene
 	RTCIntersectContext context;
@@ -270,7 +228,7 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth, const int x, con
 
 		//const Triangle & triangle = surfaces_[ray_hit]
 		Vector3 light_pos = Vector3(100, -100, 400);
-		Vector3 light_color = Vector3(1, 1, 1);
+		Vector3 light_color = Vector3(1,1,1);
 
 		Vector3 p = get_hit_point(my_ray_hit.ray_hit.ray);
 		Vector3 l_d = light_pos - p;
@@ -280,7 +238,9 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth, const int x, con
 		normal_v.Normalize();
 
 		if (depth <= 0) {
-			Vector3 n = Vector3(normal.x, normal.y, normal.z);
+			Color3f bck = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+			return Color4f(bck.r, bck.g, bck.b, 1.0f);
+			/*Vector3 n = Vector3(normal.x, normal.y, normal.z);
 			Vector3 v = Vector3(-my_ray_hit.ray_hit.ray.dir_x, -my_ray_hit.ray_hit.ray.dir_y, -my_ray_hit.ray_hit.ray.dir_y);
 			Vector3 l_r = reflect(l_d, n);
 
@@ -296,142 +256,141 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth, const int x, con
 			Color4f temp2 = material->specular * temp;
 			Color4f temp3 = temp2 + material->ambient;
 			return temp3;
+			return Color4f(1.0f, 0.0f, 0.0f, 1.0f);*/
 		}
 
 		switch (material->shader_)
 		{
-		case Shader::NORMAL:
-		{
-			return Color4f(normal.x * 0.5f + 0.5f, normal.y*0.5f + 0.5f, normal.z*0.5f + 0.5f, 1.0f);
-			break;
-		}
-		case Shader::LAMBERT:
-		{
-			return Color4f(l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), 1.0f);
-			break;
-		}
-		case Shader::PHONG:
-		{
-			Vector3 n = Vector3(normal.x, normal.y, normal.z);
-			Vector3 v = Vector3(-my_ray_hit.ray_hit.ray.dir_x, -my_ray_hit.ray_hit.ray.dir_y, -my_ray_hit.ray_hit.ray.dir_z);
-			Vector3 l_r = reflect(l_d, n);
-
-			const float enlight = trace_shadow_ray(p, l_d, l_d.L2Norm());
-
-			Vector3 C = material->ambient*light_color +
-				enlight * material->diffuse * (max(0.0f, n.DotProduct(l_d))) * light_color +
-				enlight * material->specular * powf(max(0.0f, l_r.DotProduct(v)), 1);
-			return Color4f(C.x, C.y, C.z, 1.0f);
-
-			break;
-		}
-		case Shader::GLASS:
-		{
-
-			Vector3 diffuse = Vector3(0.749019608f, 0.941176471f, 0.2f);
-			Vector3 rd = Vector3(-my_ray_hit.ray_hit.ray.dir_x, -my_ray_hit.ray_hit.ray.dir_y, -my_ray_hit.ray_hit.ray.dir_z);
-			rd.Normalize();
-
-			float n1 = my_ray_hit.ior;
-			float n2 = (n1 == IOR_AIR) ? IOR_GLASS : IOR_AIR;
-
-			// Calc cos_02
-			float cos_02 = (-normal_v).DotProduct(rd);
-			if (cos_02 < 0) {
-				normal_v = -normal_v;
-				cos_02 = (-normal_v).DotProduct(rd);
+			case Shader::NORMAL:
+			{
+				return Color4f(normal.x * 0.5f + 0.5f, normal.y*0.5f + 0.5f, normal.z*0.5f + 0.5f, 1.0f);
+				break;
 			}
-
-			// Vector rs
-			Vector3 rs = rd - (2 * normal_v.DotProduct(rd)) * normal_v;
-			rs.Normalize();
-
-			// Generate reflected ray
-			Vector3 vector = get_hit_point(my_ray_hit.ray_hit.ray);
-			RTCRay reflectedRay = my_ray_hit.ray_hit.ray;
-			reflectedRay.dir_x = rs.x;
-			reflectedRay.dir_y = rs.y;
-			reflectedRay.dir_z = rs.z;
-			reflectedRay.tnear = 0.01f;
-			reflectedRay.org_x = vector.x;
-			reflectedRay.org_y = vector.y;
-			reflectedRay.org_z = vector.z;
-			//reflectedRay.mask = 0xFFFFFFFF;
-
-			MyRTCRayHit myReflectedRTCRayHit = MyRTCRayHit{ reflectedRay };
-
-			// Calc cos_01
-			float n_d = n1 / n2;
-			float sqrt_d = (1 - (n_d * n_d) * (1 - (cos_02 * cos_02)));
-
-			// Absolute reflection
-			Color4f temp = trace_ray(myReflectedRTCRayHit, depth - 1, x, y, t);
-			if (sqrt_d < 0.0f) {
-				return  diffuse * temp;
+			case Shader::LAMBERT:
+			{
+				return Color4f(l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), 1.0f);
+				break;
 			}
+			case Shader::PHONG:
+			{
+				Vector3 n = Vector3(normal.x, normal.y, normal.z);
+				Vector3 v = Vector3(-my_ray_hit.ray_hit.ray.dir_x, -my_ray_hit.ray_hit.ray.dir_y, -my_ray_hit.ray_hit.ray.dir_z);
+				Vector3 l_r = reflect(l_d, n);
 
-			float cos_01 = sqrt(sqrt_d);
+				const float enlight = trace_shadow_ray(p, l_d, l_d.L2Norm());
 
-			// Vector rr
-			Vector3 rr = -n_d * rd - (n_d * cos_02 + cos_01) * normal_v;
-			rr.Normalize();
+				Vector3 C =
+					0.2f* material->ambient*light_color +
+					 enlight * material->diffuse * (max(0.0f, n.DotProduct(l_d))) * light_color +
+					 enlight * material->specular * powf(max(0.0f, l_r.DotProduct(v)), 1);
+				return Color4f(C.x, C.y, C.z, 1.0f);
 
-			// Vector lr
-			Vector3 lr = rr - (2 * normal_v.DotProduct(rr)) * normal_v;
-			lr.Normalize();
-			lr = -lr; // l => lr
+				break;
+			}
+			case Shader::GLASS:
+			{
+				Color4f refractFragment = Color4f(0.0f, 0.0f, 0.0f, 1.0f);
+				float coefReflect = 1.0f;
+				normal_v = Vector3(0.0f, 1.0f, 0.0f);
+				Vector3 diffuse = material->diffuse;
+				Vector3 rd = Vector3(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+				//Vector3 rd = Vector3(-0.429f, -0.903f, 0.0f);
+				Vector3 rv = -rd;
 
-			// Fresnel
-			float Rs = SQR((n1 * cos_02 - n2 * cos_01) / (n1 * cos_02 + n2 * cos_01));
-			float Rp = SQR((n1 * cos_01 - n2 * cos_02) / (n1 * cos_01 + n2 * cos_02));
-			float R = 0.5f * (Rs + Rp);
+				float n2 = my_ray_hit.ior;
+				float n1 = (n2 == IOR_AIR) ? IOR_GLASS : IOR_AIR;
 
-			// Calculate coefficients
-			float coefReflect = R;
-			float coefRefract = 1.0f - coefReflect;
-
-			// Generate refracted ray
-			vector = get_hit_point(my_ray_hit.ray_hit.ray);
-			RTCRay refractedRay = my_ray_hit.ray_hit.ray;
-			refractedRay.dir_x = lr.x;
-			refractedRay.dir_y = lr.y;
-			refractedRay.dir_z = lr.z;
-			refractedRay.tnear = 0.01f;
-			refractedRay.org_x = vector.x;
-			refractedRay.org_y = vector.y;
-			refractedRay.org_z = vector.z;
+				float n_divided = n1 / n2;
+				float cos_01 = (normal_v.DotProduct(rv));
 
 
-			MyRTCRayHit myRefractedRTCRayHit = MyRTCRayHit{ refractedRay };
+				Vector3 rr = (2.0f * (normal_v.DotProduct(rv))) * normal_v - rv;
 
-			// Set IOR
-			myRefractedRTCRayHit.ior = n2;
-			myReflectedRTCRayHit.ior = n1;
+				float tmp = 1.0f - SQR(n_divided) * (1.0f - SQR(cos_01));
+				if (tmp > 0) {
+						float cos_02 = sqrt(tmp);
+						if ( cos_02 < 0) {
+							normal_v = -normal_v;
+							cos_02 = (-normal_v).DotProduct(rd);
+						}
+						Vector3 rl = (n_divided * rd) + ((n_divided * cos_01 - cos_02) * normal_v);
+						// Fresnel
+						float Rs = SQR(((n2 * cos_02) - (n1 * cos_01)) / ((n2 * cos_02) + (n1 * cos_01)));
+						float Rp = SQR(((n2 * cos_01) - (n1 * cos_02)) / ((n2 * cos_01) + (n1 * cos_02)));
+						float R = 0.5f * (Rs + Rp);
 
-			Color4f temp1 = trace_ray(myReflectedRTCRayHit, depth - 1, x, y, t);
-			Color4f temp2 = trace_ray(myRefractedRTCRayHit, depth - 1, x, y, t);
-			Color4f temp3 = temp1 * coefReflect;
-			Color4f temp4 = temp2 * coefRefract;
-			Color4f temp5 = diffuse * temp3;
-			Color4f temp6 = diffuse * temp4;
+						// Calculate coefficients
+						coefReflect = R;
+						float coefRefract = 1.0f - coefReflect;
 
-			return temp5 + temp6;
-			break;
+						// Generate refracted ray
+						Vector3 vector = get_hit_point(my_ray_hit.ray_hit.ray);
+						RTCRay refractedRay = camera_.GenerateRay(0,0);
+						refractedRay.dir_x = rl.x;
+						refractedRay.dir_y = rl.y;
+						refractedRay.dir_z = rl.z;
+						refractedRay.tnear = 0.01f;
+						refractedRay.org_x = vector.x;
+						refractedRay.org_y = vector.y;
+						refractedRay.org_z = vector.z;
+
+						MyRTCRayHit myRefractedRTCRayHit = MyRTCRayHit{ refractedRay };
+
+						//myRefractedRTCRayHit.ior = n2;
+						Color4f temp2 = trace_ray(myRefractedRTCRayHit, depth - 1, t);
+						Color4f temp4 = temp2 * coefRefract;
+						//refractFragment = Color4f(1.0f, 0.0f, 0.0f, 1.0f);
+						refractFragment =  diffuse * temp4;
+
+				}	
+
+
+				
+
+			
+
+				// Generate reflected ray
+				Vector3 vector = get_hit_point(my_ray_hit.ray_hit.ray);
+				RTCRay reflectedRay = camera_.GenerateRay(0, 0);
+				reflectedRay.dir_x = rr.x;
+				reflectedRay.dir_y = rr.y;
+				reflectedRay.dir_z = rr.z;
+				reflectedRay.tnear = 0.01f;
+				reflectedRay.org_x = vector.x;
+				reflectedRay.org_y = vector.y;
+				reflectedRay.org_z = vector.z;
+
+				MyRTCRayHit myReflectedRTCRayHit = MyRTCRayHit{ reflectedRay };
+
+			
+
+
+				//// Set IOR
+				//myReflectedRTCRayHit.ior == n1 ? n2 : n1;
+
+				Color4f temp1 = trace_ray(myReflectedRTCRayHit, depth - 1, t);
+				Color4f temp3 = temp1 * coefReflect;
+				Color4f temp5 = diffuse * temp3;
+
+
+				return temp5;
+
+				//TODO   fix  black refractFragment  condition if(tmp > 0) never triggered !!!
+				//return temp5 +  refractFragment;
+
+				//FOR TEST
+				// return refractFragment;
+			}
+			default:
+			{
+				return Color4f(l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), 1.0f);
+				break;
+			}
 		}
-		default:
-		{
-			return Color4f(l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), 1.0f);
-			//return Color4f( material->ambient.x, material->ambient.y, material->ambient.z, 1.0f );
-			break;
-		}
-		}
-		////ray. .....
-		//RTCIntersectContext context;
-		//rtcInitIntersectContext(context);
-		//rtcOf
 
-
-		return Color4f(0.0f, 0.0f, 0.0f, 1.0f);
+		/*Color3f bck = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+		return Color4f(bck.r, bck.g, bck.b, 1.0f);
+		return Color4f(0.0f, 0.0f, 0.0f, 1.0f);*/
 	}
 	else {
 		Color3f bck = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);

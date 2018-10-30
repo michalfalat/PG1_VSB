@@ -22,6 +22,8 @@ struct RTC_ALIGN( 16 ) Color4f
 	friend Color4f operator*(Color4f &u, Color4f &v);
 	friend Color4f operator+(Color4f &c1, Color4f &c2);
 	friend Color4f operator+(Color4f &c1, Vector3 &c2);
+	friend Color4f operator/(Color4f &c, float a);
+	friend void operator+=(Color4f &c1, const Color4f &c2);
 };
 
 struct Color3f { float r, g, b; };

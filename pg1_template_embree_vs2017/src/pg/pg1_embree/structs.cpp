@@ -35,3 +35,13 @@ Color4f operator+(Color4f &c1, Color4f &c2) {
 Color4f operator+(Color4f &c1, Vector3 &c2) {
 	return Color4f{ c1.r + c2.x, c1.g + c2.y, c1.b + c2.z, c1.a  };
 }
+Color4f operator/(Color4f &c, float a) {
+	return Color4f{ c.r / a, c.g / a, c.b / a, c.a / a };
+}
+
+void operator+=(Color4f &c1, const Color4f &c2) {
+	c1.r += c2.r;
+	c1.g += c2.g;
+	c1.b += c2.b;
+	c1.a += c2.a;
+}
