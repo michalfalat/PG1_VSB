@@ -12,7 +12,7 @@ SphericalBackground::SphericalBackground(const char filename[])
 
 
 
-Color3f SphericalBackground::GetBackground(const float x, const float y, const float z) {
+Color4f SphericalBackground::GetBackground(const float x, const float y, const float z) {
 	const float theta = acosf(z);
 	const float phi = atan2f(y, x) + float(M_PI);
 

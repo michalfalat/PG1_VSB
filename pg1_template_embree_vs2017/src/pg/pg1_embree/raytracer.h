@@ -28,10 +28,13 @@ public:
 
 	Color4f get_pixel( const int x, const int y, const float t = 0.0f ) override;
 
-	Color4f trace_ray(MyRTCRayHit ray, int depth, const int x, const int y, const float t = 0.0f);
+	Color4f trace_ray(MyRTCRayHit ray, int depth,  const float t = 0.0f);
 
 	float trace_shadow_ray(const Vector3 & p, const Vector3 & l_d, const float dist);
+	float linearToSrgb(float color);
+	Vector3 sampleHemisphere(Vector3 normal);
 
+	Vector3 getInterpolatedPoint(RTCRay ray);
 	int Ui();
 
 private:

@@ -12,30 +12,30 @@ Color4f::Color4f(const float * v)
 	a = v[4];
 }
 
-Color4f operator*(Color4f &c, float a) {
+Color4f operator*(const Color4f &c, const  float a) {
 	return Color4f{ a * c.r, a * c.g, a * c.b, a * c.a };
 }
 
-Color4f operator*(float a, Color4f &c) {
+Color4f operator*(const float a, const  Color4f &c) {
 	return Color4f{ a * c.r, a * c.g, a * c.b, a * c.a };
 }
 
-Color4f operator*(Vector3 &v, Color4f &c) {
+Color4f operator*(const Vector3 &v, const  Color4f &c) {
 	return Color4f{ v.x * c.r, v.y * c.g, v.z * c.b, c.a };
 }
 
-Color4f operator*(Color4f &u, Color4f &v) {
+Color4f operator*(const Color4f &u, const  Color4f &v) {
 	return Color4f{ u.r * v.r, u.g * v.g, u.b * v.b, u.a * v.a };
 }
 
-Color4f operator+(Color4f &c1, Color4f &c2) {
+Color4f operator+(const Color4f &c1, const  Color4f &c2) {
 	return Color4f{ c1.r + c2.r, c1.g + c2.g, c1.b + c2.b, c1.a + c2.a };
 }
 
-Color4f operator+(Color4f &c1, Vector3 &c2) {
+Color4f operator+(const Color4f &c1, const  Vector3 &c2) {
 	return Color4f{ c1.r + c2.x, c1.g + c2.y, c1.b + c2.z, c1.a  };
 }
-Color4f operator/(Color4f &c, float a) {
+Color4f operator/(const Color4f &c, const  float a) {
 	return Color4f{ c.r / a, c.g / a, c.b / a, c.a / a };
 }
 

@@ -172,7 +172,7 @@ int tutorial_2()
 {
 	// create texture
 	Texture texture( "../../../data/test4.png" );
-	Color3f texel = texture.get_texel( ( 1.0f / texture.width() ) * 2.5f, 0.0f );
+	Color4f texel = texture.get_texel( ( 1.0f / texture.width() ) * 2.5f, 0.0f );
 	printf( "(r = %0.3f, g = %0.3f, b = %0.3f)\n", texel.r, texel.g, texel.b );
 
 	return EXIT_SUCCESS;

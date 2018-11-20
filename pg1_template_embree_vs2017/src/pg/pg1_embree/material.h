@@ -33,7 +33,7 @@
 */
 
 
-enum  Shader {NORMAL = 1, LAMBERT = 2, PHONG = 3, GLASS = 4 };
+enum  Shader {NORMAL = 1, LAMBERT = 2, PHONG = 3, GLASS = 4, PATHTRACER = 5 };
 class Material
 {
 public:	
@@ -92,6 +92,9 @@ public:
 
 
 	void set_shader(Shader shader);
+
+	Vector3 doDiffuse(const Coord2f * tex_coord) const;
+
 
 	//! Vrátí texturu.
 	/*!	

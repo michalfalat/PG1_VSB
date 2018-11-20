@@ -17,7 +17,7 @@ public:
 	Texture( const char * file_name );
 	~Texture();
 
-	Color3f get_texel( const float u, const float v ) const;
+	Color4f get_texel(const float u, const float v) const;
 
 	int width() const;
 	int height() const;

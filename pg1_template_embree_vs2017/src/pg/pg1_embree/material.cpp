@@ -84,3 +84,18 @@ Texture * Material::get_texture( const int slot ) const
 {
 	return textures_[slot];
 }
+
+Vector3 Material::doDiffuse(const Coord2f * tex_coord) const
+{
+	if (tex_coord)
+	{
+		Texture * texture = textures_[kDiffuseMapSlot];
+
+		if (texture) {
+			Color4f texel = texture->get_texel(tex_coord->u, tex_coord->v);
+			return Vector3{ texel.r, texel.g, texel.b };
+		}
+
+		return this->diffuse;
+	}
+}
