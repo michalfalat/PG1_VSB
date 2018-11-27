@@ -21,7 +21,7 @@ float Vector3::SqrL2Norm() const
 	return sqr( x ) + sqr( y ) + sqr( z );
 }
 
-void Vector3::Normalize()
+Vector3 Vector3::Normalize()
 {
 	const float norm = SqrL2Norm();
 
@@ -33,6 +33,7 @@ void Vector3::Normalize()
 		y *= rn;
 		z *= rn;
 	}
+	return *this;
 }
 
 Vector3 Vector3::CrossProduct( const Vector3 & v ) const

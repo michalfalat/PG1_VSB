@@ -77,7 +77,7 @@ public:
 	/*!
 	Po provedení operace bude mít vektor jednotkovou délku.
 	*/
-	void Normalize();
+	Vector3 Normalize();
 
 	//! Vektorový souèin.
 	/*!

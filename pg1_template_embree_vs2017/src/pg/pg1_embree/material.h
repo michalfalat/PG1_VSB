@@ -94,6 +94,8 @@ public:
 	void set_shader(Shader shader);
 
 	Vector3 doDiffuse(const Coord2f * tex_coord) const;
+	Vector3 getDiffuse(Coord2f tex_coord);
+	Vector3 getSpecular(Coord2f tex_coord);
 
 
 	//! Vrátí texturu.

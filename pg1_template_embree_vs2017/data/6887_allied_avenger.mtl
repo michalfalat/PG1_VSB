@@ -22,6 +22,7 @@ newmtl green_plastic_transparent
 	Kd 0.85 1.0 0.01
 	Ks 1.0. 1.0 1.0
 	shader 4
+	Ni 1.5
 
 newmtl white_plastic
 	Ns 32

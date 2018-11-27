@@ -179,6 +179,10 @@ int LoadMTL( const char * file_name, const char * path, std::vector<Material *> 
 					sscanf(tmp, "%*s %d", &shader);
 					material->set_shader(Shader(shader));
 				}
+				if (strstr(tmp, "Ni") == tmp) // specular coefficient
+				{
+					sscanf(tmp, "%*s %f", &material->ior);
+				}
 			}
 		}
 

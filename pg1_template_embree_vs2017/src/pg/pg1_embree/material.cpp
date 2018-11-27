@@ -99,3 +99,23 @@ Vector3 Material::doDiffuse(const Coord2f * tex_coord) const
 		return this->diffuse;
 	}
 }
+
+Vector3 Material::getDiffuse(Coord2f tex_coord) {
+
+	if (textures_[kDiffuseMapSlot]) {
+		Color4f color = textures_[kDiffuseMapSlot]->get_texel(tex_coord.u, 1 - tex_coord.v);
+		return Vector3{ color.r, color.g, color.b };
+	}
+
+	return this->diffuse;
+}
+
+Vector3 Material::getSpecular(Coord2f tex_coord) {
+
+	if (textures_[kSpecularMapSlot]) {
+		Color4f color = textures_[kDiffuseMapSlot]->get_texel(tex_coord.u, 1 - tex_coord.v);
+		return Vector3{ color.r, color.g, color.b };
+	}
+
+	return this->specular;
+}
