@@ -359,10 +359,6 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 	else {
 		Color4f bck = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
 		return bck;
-
-		//return Color
-		return Color4f(1.0f, 1.0f, 1.0f, 1.0f);
-		//return Color4f(getSRGBColorValueForComponent(bck.r), getSRGBColorValueForComponent(bck.g), getSRGBColorValueForComponent(bck.b), 1.0f);
 	}
 }
 
@@ -437,14 +433,6 @@ float Raytracer::linearToSrgb(float color) {
 
 }
 
-//Color4f Raytracer::getAttenuationOfRay(Vector3 vectorToIntersection, Material* material, float actualIor) {
-//	Color4f attenuation = { 1,1,1,1 };
-//	if (actualIor != IOR_AIR) {
-//		float dstToIntersection = vectorToIntersection.L2Norm();
-//		attenuation = Color4f{ exp(-0.0001f*dstToIntersection) * material->diffuse.x, exp(-0.0001f*dstToIntersection) * material->diffuse.y, exp(-0.0001f*dstToIntersection) * material->diffuse.z, 1.0f };
-//	}
-//	return attenuation;
-//}
 
 int Raytracer::Ui()
 {
