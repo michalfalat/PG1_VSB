@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "texture.h"
+#include "utils.h"
 
 Texture::Texture( const char * file_name )
 {
@@ -79,31 +80,39 @@ Color4f Texture::get_texel( const float u, const float v ) const
 	
 	return Color4f{ r, g, b, 1 };*/
 
+	const int x = max(0, min(width_ - 1, int(u * width_)));
+	const int y = max(0, min(height_ - 1, int(v * height_)));
+	int offset = y * scan_width_ + x * pixel_size_;
+	float b = data_[offset] / 255.0f;
+	float g = data_[offset + 1] / 255.0f;
+	float r = data_[offset + 2] / 255.0f;
 
-	const float x = max(0, min(width_ - 1, u * width_));
-	const float y = max(0, min(height_ - 1, v * height_));
+	return Color4f{ getLRGBColorValueForComponent(r), getLRGBColorValueForComponent(g), getLRGBColorValueForComponent(b), 1 };
 
-	const int x0 = static_cast<int>(floor(x));
-	const int y0 = static_cast<int>(floor(y));
+	//const float x = max(0, min(width_ - 1, u * width_));
+	//const float y = max(0, min(height_ - 1, v * height_));
 
-	const int x1 = min(width_ - 1, x0 + 1);
-	const int y1 = min(height_ - 1, y0 + 1);
+	//const int x0 = static_cast<int>(floor(x));
+	//const int y0 = static_cast<int>(floor(y));
 
-	unsigned char * p1 = &data_[x0 * pixel_size_ + y0 * scan_width_];
-	unsigned char * p2 = &data_[x1 * pixel_size_ + y0 * scan_width_];
-	unsigned char * p3 = &data_[x1 * pixel_size_ + y1 * scan_width_];
-	unsigned char * p4 = &data_[x0 * pixel_size_ + y1 * scan_width_];
+	//const int x1 = min(width_ - 1, x0 + 1);
+	//const int y1 = min(height_ - 1, y0 + 1);
 
-	const float kx = x - x0;
-	const float ky = y - y0;
+	//unsigned char * p1 = &data_[x0 * pixel_size_ + y0 * scan_width_];
+	//unsigned char * p2 = &data_[x1 * pixel_size_ + y0 * scan_width_];
+	//unsigned char * p3 = &data_[x1 * pixel_size_ + y1 * scan_width_];
+	//unsigned char * p4 = &data_[x0 * pixel_size_ + y1 * scan_width_];
 
-	Color4f finalColor =  (Color4f(p1[0], p1[1], p1[2], p1[3]) * (1 - kx) * (1 - ky) +
-		Color4f(p2[0], p2[1], p2[2], p2[3]) * kx * (1 - ky) +
-		Color4f(p3[0], p3[1], p3[2], p3[3]) * kx * ky +
-		Color4f(p4[0], p4[1], p4[2], p4[3]) * (1 - kx) * ky) *
-		static_cast<float>(1.0 / 255.0);
+	//const float kx = x - x0;
+	//const float ky = y - y0;
 
-	return Color4f(finalColor.b, finalColor.g, finalColor.r, 1);
+	//Color4f finalColor =  (Color4f(p1[0], p1[1], p1[2], p1[3]) * (1 - kx) * (1 - ky) +
+	//	Color4f(p2[0], p2[1], p2[2], p2[3]) * kx * (1 - ky) +
+	//	Color4f(p3[0], p3[1], p3[2], p3[3]) * kx * ky +
+	//	Color4f(p4[0], p4[1], p4[2], p4[3]) * (1 - kx) * ky) *
+	//	static_cast<float>(1.0 / 255.0);
+
+	//return Color4f(getLRGBColorValueForComponent(finalColor.b), getLRGBColorValueForComponent(finalColor.g), getLRGBColorValueForComponent(finalColor.r), 1);
 }
 
 int Texture::width() const

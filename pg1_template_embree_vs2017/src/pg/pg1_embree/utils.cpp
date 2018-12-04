@@ -202,6 +202,16 @@ char * Trim(char * s)
 	return RTrim(LTrim(s));
 }
 
+float getLRGBColorValueForComponent(float colorComponent) {
+	float colorFactor = 1 / 12.92f;
+	return colorComponent <= 0.04045 ? colorComponent * colorFactor : pow((colorComponent + 0.055f) / (1 + 0.055f), 2.4f);
+}
+
+float getSRGBColorValueForComponent(float colorComponent) {
+	float colorFactor = 1 / 2.4f;
+	return colorComponent <= 0.0031308f ? 12.92f * colorComponent : (1 + 0.055f) * pow(colorComponent, colorFactor) - 0.055f;
+}
+
 RTCHit createEmptyHit() {
 	RTCHit hit;
 	hit.geomID = RTC_INVALID_GEOMETRY_ID;

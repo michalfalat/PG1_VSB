@@ -90,7 +90,7 @@ float Raytracer::trace_shadow_ray(const Vector3 & p, const Vector3 & l_d, const 
 	rtcOccluded1(scene_, &context, &ray);
 
 	if (ray.tfar < dist) {
-		return 0.0;
+		return 0.01;
 	}
 	else {
 		return 1.0;
@@ -222,7 +222,7 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 		Material * material = (Material *)(rtcGetGeometryUserData(geometry));
 
 		//const Triangle & triangle = surfaces_[ray_hit]
-		Vector3 light_pos = Vector3(120, -100, 300);
+		Vector3 light_pos = Vector3(-100, -100, 300);
 
 		Vector3 p = get_hit_point(my_ray_hit.ray_hit.ray);
 		Vector3 l_d = light_pos - p;
@@ -236,9 +236,9 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 
 		if (depth <= 0) {
 			Color4f bck = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
-			return bck;
+			//return bck;
 			//return Color4f(1.0f,bck.g, bck.b,1.0f);
-			//return Color4f(getSRGBColorValueForComponent(bck.r), getSRGBColorValueForComponent(bck.g), getSRGBColorValueForComponent(bck.b), 1.0f);
+			return Color4f(getSRGBColorValueForComponent(bck.r), getSRGBColorValueForComponent(bck.g), getSRGBColorValueForComponent(bck.b), 1.0f);
 		}
 		// u,v tex_coord
 
@@ -358,7 +358,9 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 	}
 	else {
 		Color4f bck = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
-		return bck;
+		//return bck;
+
+		return Color4f(getSRGBColorValueForComponent(bck.r), getSRGBColorValueForComponent(bck.g), getSRGBColorValueForComponent(bck.b), 1.0f);
 	}
 }
 
