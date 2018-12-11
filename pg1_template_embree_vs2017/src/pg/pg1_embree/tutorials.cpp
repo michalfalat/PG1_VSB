@@ -184,18 +184,18 @@ int tutorial_3(const std::string file_name, const char * config)
 	//SimpleGuiDX11 gui( 640, 480 );
 	//gui.MainLoop();
 
-	//Sphere
-	Raytracer raytracer( 640, 480, deg2rad( 40.0 ),
-	Vector3( 40, -940, 250 ), Vector3( 0, 0, 250 ), config );
 
-	//Ship Model
-	/*Raytracer raytracer(640, 480, deg2rad(45.0),
-		Vector3(175, -140, 130), Vector3(0, 0, 35), config);*/
-
-
-	// path tracer
+	// GEOSPHERE
 	//Raytracer raytracer(640, 480, deg2rad(45.0),
 	//	Vector3(3, 0, 0), Vector3(0, 0, 0), config);
+
+	//Ship Model
+	Raytracer raytracer(640, 480, deg2rad(50.0),
+		Vector3(175, -140, 130), Vector3(0, 0, 35), config);
+
+	//PATH Tracer
+	/*Raytracer raytracer(640, 480, deg2rad(40.0),
+		Vector3(40, -940, 250), Vector3(0, 0, 250), config);*/
 	raytracer.LoadScene(file_name);
 	raytracer.MainLoop();
 
