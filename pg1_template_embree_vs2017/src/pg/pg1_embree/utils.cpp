@@ -243,8 +243,8 @@ RTCRay createRay(Vector3 origin, Vector3 dir, float tfar, float tnear) {
 	return ray;
 }
 
-MyRTCRayHit createRayWithEmptyHitAndIor(Vector3 origin, Vector3 dir, float tfar, float tnear, float ior) {
-	MyRTCRayHit myRtcRay;
+RTCRayHitWithIor createRayWithEmptyHitAndIor(Vector3 origin, Vector3 dir, float tfar, float tnear, float ior) {
+	RTCRayHitWithIor myRtcRay;
 	myRtcRay.ray_hit.ray = createRay(origin, dir, tfar, tnear);
 	myRtcRay.ray_hit.hit = createEmptyHit();
 	myRtcRay.ior = ior;

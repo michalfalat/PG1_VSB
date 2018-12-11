@@ -3,7 +3,7 @@
 #include "surface.h"
 #include "camera.h"
 #include "structs.h"
-#include "Sphericalbackground.h"
+#include "Background.h"
 
 /*! \class Raytracer
 \brief General ray tracer class.
@@ -28,9 +28,9 @@ public:
 
 	Color4f get_pixel( const int x, const int y, const float t = 0.0f ) override;
 
-	Color4f trace_ray(MyRTCRayHit ray, int depth);
+	Color4f trace_ray(RTCRayHitWithIor ray, int depth);
 
-	float trace_shadow_ray(const Vector3 & p, const Vector3 & l_d, const float dist);
+	float trace_shadow_ray(const Vector3 & p, const Vector3 & l_d, const float dist, RTCIntersectContext context);
 	float linearToSrgb(float color);
 	float getGeometryTerm(Vector3 omegaI, RTCIntersectContext context, Vector3 vectorToLight, Vector3 intersectionPoint, Vector3 normal);
 	float  castShadowRay(RTCIntersectContext context, Vector3 vectorToLight, float dstToLight, Vector3 intersectionPoint, Vector3 normal);
@@ -47,5 +47,5 @@ private:
 	RTCDevice device_;
 	RTCScene scene_;
 	Camera camera_;
-	SphericalBackground background_;
+	Background background_;
 };

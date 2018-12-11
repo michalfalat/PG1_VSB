@@ -62,12 +62,14 @@ newmtl mirror
 	Tr 0
 	Tf 1 1 1
 	illum 2
-  Ka 0.1 0.1 0.1
-	Kd 0.0 0.0 1.0
+	Ka 0.1 0.1 0.1
+	Kd 0.8 0.8 0.8
 	Ks 1.0 1.0 1.0
-  shader 6
+	Ke 0.0 0.0 0.0
+	Ni 1.5
+	shader 6
   
 newmtl clear_glass	
-	Kd 0.01 0.01 0.01  	   
-	ior 1.5
-	shader 4
+	Kd 0.01 0.01 0.01  
+	Ke 0.0 0.0 0.0
+	shader 5

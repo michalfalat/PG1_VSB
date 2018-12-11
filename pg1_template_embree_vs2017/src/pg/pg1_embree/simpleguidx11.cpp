@@ -92,35 +92,39 @@ void SimpleGuiDX11::Producer()
 
 	// refinenment loop
 	//for ( float t = 0.0f; t < 1e+3 && !finish_request_.load( std::memory_order_acquire ); t += float( 1e-1 ) )
-	while ( !finish_request_.load( std::memory_order_acquire ) )
+	int n = 0;
+	while (!finish_request_.load(std::memory_order_acquire))
 	{
 		auto t1 = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<float> dt = t1 - t0;
 		t += dt.count();
 		t0 = t1;
-
 		// compute rendering
 		//std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
-//#pragma omp parallel for
-		for ( int y = 0; y < height_; ++y )
-		{		
-			for ( int x = 0; x < width_; ++x )
-			{				
-				const Color4f pixel = get_pixel( x, y, t );
-				const int offset = ( y * width_ + x ) * 4;
+#pragma omp parallel for schedule(dynamic,5)
+		for (int y = 0; y < height_; ++y)
+		{
+			for (int x = 0; x < width_; ++x)
+			{
+				const Color4f pixel = get_pixel(x, y, t);
+				const int offset = (y * width_ + x) * 4;
 
-				local_data[offset] = pixel.r;
-				local_data[offset + 1] = pixel.g;
-				local_data[offset + 2] = pixel.b;
-				local_data[offset + 3] = pixel.a;
+
+				//pathtracer
+				local_data[offset] = ((local_data[offset] * n) + pixel.r) / (n + 1);
+				local_data[offset + 1] = ((local_data[offset + 1] * n) + pixel.g) / (n + 1);
+				local_data[offset + 2] = ((local_data[offset + 2] * n) + pixel.b) / (n + 1);
+				local_data[offset + 3] = 1.0f;
+
 				//pixel.copy( local_data[offset] );
 			}
 		}
+		n++;
 
 		// write rendering results
 		{
-			std::lock_guard<std::mutex> lock( tex_data_lock_ );
-			memcpy( tex_data_, local_data, width_ * height_ * 4 * sizeof( float ) );			
+			std::lock_guard<std::mutex> lock(tex_data_lock_);
+			memcpy(tex_data_, local_data, width_ * height_ * 4 * sizeof(float));
 		} // lock release
 	}
 

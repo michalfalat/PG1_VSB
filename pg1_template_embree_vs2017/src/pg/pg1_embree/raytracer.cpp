@@ -3,10 +3,19 @@
 #include "objloader.h"
 #include "tutorials.h"
 #include "material.h"
-#include "SphericalBackground.h"
+#include "background.h"
 #include "utils.h"
 #define _USE_MATH_DEFINES
 #include <math.h>
+
+
+float SQR(float r) {
+	return r * r;
+}
+
+inline Vector3 reflect(const Vector3 & v, const Vector3 & n) {
+	return 2.0f * (n.DotProduct(v))* n - v;
+}
 
 Raytracer::Raytracer(const int width, const int height,
 	const float fov_y, const Vector3 view_from, const Vector3 view_at,
@@ -15,7 +24,7 @@ Raytracer::Raytracer(const int width, const int height,
 	InitDeviceAndScene(config);
 
 	camera_ = Camera(width, height, fov_y, view_from, view_at);
-	background_ = SphericalBackground("../../../data/background.jpg");
+	background_ = Background("../../../data/background.jpg");
 }
 
 Vector3 get_hit_point(const RTCRay &ray)
@@ -27,9 +36,6 @@ Vector3 get_hit_point(const RTCRay &ray)
 }
 
 
-float SQR(float r) {
-	return r * r;
-}
 
 Raytracer::~Raytracer()
 {
@@ -58,17 +64,14 @@ int Raytracer::ReleaseDeviceAndScene()
 	return S_OK;
 }
 
-inline Vector3 reflect(const Vector3 & v, const Vector3 & n) {
-	return 2.0f * (n.DotProduct(v))* n - v;
-}
 
-float Raytracer::trace_shadow_ray(const Vector3 & p, const Vector3 & l_d, const float dist) {
+float Raytracer::trace_shadow_ray(const Vector3 & p, const Vector3 & l_d, const float dist, RTCIntersectContext contedxt) {
 	RTCHit hit;
 	hit.geomID = RTC_INVALID_GEOMETRY_ID;
 	hit.primID = RTC_INVALID_GEOMETRY_ID;
 
 	RTCRay ray = RTCRay();
-	ray.org_x = p.x; // ray origin
+	ray.org_x = p.x;
 	ray.org_y = p.y;
 	ray.org_z = p.z;
 
@@ -90,10 +93,10 @@ float Raytracer::trace_shadow_ray(const Vector3 & p, const Vector3 & l_d, const 
 	rtcOccluded1(scene_, &context, &ray);
 
 	if (ray.tfar < dist) {
-		return 0.01;
+		return 0.00f;
 	}
 	else {
-		return 1.0;
+		return 1.0f;
 	}
 }
 
@@ -146,12 +149,12 @@ void Raytracer::LoadScene(const std::string file_name)
 
 				tex_coords[k].u = vertex.texture_coords[0].u;
 				tex_coords[k].v = vertex.texture_coords[0].v;
-			} // end of vertices loop
+			}
 
 			triangles[i].v0 = k - 3;
 			triangles[i].v1 = k - 2;
 			triangles[i].v2 = k - 1;
-		} // end of triangles loop
+		}
 
 		rtcCommitGeometry(mesh);
 		unsigned int geom_id = rtcAttachGeometry(scene_, mesh);
@@ -164,8 +167,7 @@ void Raytracer::LoadScene(const std::string file_name)
 Color4f Raytracer::get_pixel(const int x, const int y, const float t)
 {
 
-	// merge ray and hit structures
-	MyRTCRayHit my_ray_hit;
+	RTCRayHitWithIor my_ray_hit;
 
 	// Uniform supersampling
 	Color4f colorSum = Color4f(0.0f, 0.0f, 0.0f, 1.0f);
@@ -175,24 +177,33 @@ Color4f Raytracer::get_pixel(const int x, const int y, const float t)
 	float offsetY = -0.5f;
 	float offsetAddition = 1.0f / size;
 
-	int samples = 10;
+	int samples = 5;
 
-#pragma omp parallel for schedule(dynamic, 5) shared(colorSum)
-	for (int i = 0; i < samples; i++) {
-		float offsetX = (x + Random());
-		float offsetY = (y + Random());
+	//#pragma omp parallel for schedule(dynamic, 5) shared(colorSum)
+	//	for (int i = 0; i < samples; i++) {
+	//		float offsetX = (x + Random());
+	//		float offsetY = (y + Random());
+	//
+	//		my_ray_hit.ray_hit.ray = camera_.GenerateRay(offsetX, offsetY);
+	//		my_ray_hit.ray_hit.hit = createEmptyHit();
+	//		my_ray_hit.ior = IOR_AIR;
+	//		Color4f traced = trace_ray(my_ray_hit, 5);
+	//		colorSum += traced;
+	//	}
+	//
+	//	return colorSum / static_cast<float>(samples);
+	offsetX = (x + Random());
+	offsetY = (y + Random());
 
-		my_ray_hit.ray_hit.ray = camera_.GenerateRay(offsetX, offsetY);
-		my_ray_hit.ray_hit.hit = createEmptyHit();
-		my_ray_hit.ior = IOR_AIR;
-		Color4f traced = trace_ray(my_ray_hit, 5);
-		colorSum += traced;
-	}
+	my_ray_hit.ray_hit.ray = camera_.GenerateRay(offsetX, offsetY);
+	my_ray_hit.ray_hit.hit = createEmptyHit();
+	my_ray_hit.ior = IOR_AIR;
+	Color4f traced = trace_ray(my_ray_hit, 4);
 
-	return colorSum / static_cast<float>(samples);
+	return traced;
 }
 
-Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
+Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 	// TODO generate primary ray and perform ray cast on the scene
 	// setup a hit
 
@@ -222,10 +233,10 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 		Material * material = (Material *)(rtcGetGeometryUserData(geometry));
 
 		//const Triangle & triangle = surfaces_[ray_hit]
-		Vector3 light_pos = Vector3(-100, -100, 300);
+		Vector3 l_position = Vector3(-50, -50, 300);
 
 		Vector3 p = get_hit_point(my_ray_hit.ray_hit.ray);
-		Vector3 l_d = light_pos - p;
+		Vector3 l_d = l_position - p;
 		l_d.Normalize();
 
 		Vector3 rd = Vector3(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
@@ -235,10 +246,10 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 		}
 
 		if (depth <= 0) {
-			Color4f bck = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+			Color4f background = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
 			//return bck;
 			//return Color4f(1.0f,bck.g, bck.b,1.0f);
-			return Color4f(getSRGBColorValueForComponent(bck.r), getSRGBColorValueForComponent(bck.g), getSRGBColorValueForComponent(bck.b), 1.0f);
+			return Color4f(getSRGBColorValueForComponent(background.r), getSRGBColorValueForComponent(background.g), getSRGBColorValueForComponent(background.b), 1.0f);
 		}
 		// u,v tex_coord
 
@@ -246,43 +257,42 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 		{
 		case Shader::NORMAL:
 		{
-			return Color4f(normal.x * 0.5f + 0.5f, normal.y*0.5f + 0.5f, normal.z*0.5f + 0.5f, 1.0f);
+			return Color4f(normal.x * 0.5f + 0.5f, normal.y * 0.5f + 0.5f, normal.z * 0.5f + 0.5f, 1.0f);
 			break;
 		}
 		case Shader::LAMBERT:
 		{
-			Vector3 diff = material->doDiffuse(&tex_coord);
+			Vector3 diffuse = material->doDiffuse(&tex_coord);
 			float dot = l_d.PosDotProduct(normal_v);
-			Vector3 temp = max(0, dot) * diff;
-			return Color4f(temp.x, temp.y, temp.z, 1.0f);
-			//return Color4f(l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), l_d.PosDotProduct(normal_v), 1.0f);
+			Vector3 lambert_color = max(0, dot) * diffuse;
+			return Color4f(lambert_color.x, lambert_color.y, lambert_color.z, 1.0f);
 			break;
 		}
 		case Shader::PHONG:
 		{
-			Vector3 n = Vector3(normal.x, normal.y, normal.z);
 			Vector3 v = Vector3(-my_ray_hit.ray_hit.ray.dir_x, -my_ray_hit.ray_hit.ray.dir_y, -my_ray_hit.ray_hit.ray.dir_z);
-			Vector3 l_r = reflect(l_d, n);
+			Vector3 l_r = reflect(l_d, normal_v);
 
-			//Coord2f tex_coord = Coord2f { my_ray_hit.ray_hit.hit.u, my_ray_hit.ray_hit.hit.u };
-			Vector3 diff = material->doDiffuse(&tex_coord);
+			// get diffuse
+			Vector3 diffuse = material->doDiffuse(&tex_coord);
 
-			const float enlight = trace_shadow_ray(p, l_d, l_d.L2Norm());
-			Color4f resultColor = Color4f{
-				(material->ambient.x + enlight * ((diff.x * n.DotProduct(l_d)) + pow(material->specular.x * v.DotProduct(l_r), material->shininess))),
-				(material->ambient.y + enlight * ((diff.y * n.DotProduct(l_d)) + pow(material->specular.y * v.DotProduct(l_r), material->shininess))),
-				(material->ambient.z + enlight * ((diff.z * n.DotProduct(l_d)) + pow(material->specular.z * v.DotProduct(l_r), material->shininess))),
-				1 };
-			return resultColor;
+			const float enlight = trace_shadow_ray(p, l_d, l_d.L2Norm(), context);
+			Color4f final_color = Color4f{
+				(material->ambient.x + enlight * ((diffuse.x * normal_v.DotProduct(l_d)) + pow(material->specular.x * v.DotProduct(l_r), material->shininess))),
+				(material->ambient.y + enlight * ((diffuse.y * normal_v.DotProduct(l_d)) + pow(material->specular.y * v.DotProduct(l_r), material->shininess))),
+				(material->ambient.z + enlight * ((diffuse.z * normal_v.DotProduct(l_d)) + pow(material->specular.z * v.DotProduct(l_r), material->shininess))),
+				1 } * material->reflectivity;
+			return final_color;
 
 			break;
 		}
 		case Shader::GLASS:
 		{
-			MyRTCRayHit myRefractedRTCRayHit, myReflectedRTCRayHit;
+			RTCRayHitWithIor myRefractedRTCRayHit, myReflectedRTCRayHit;
 
 			Vector3 diffuse = material->diffuse;
 			Vector3 rv = Vector3(-rd.x, -rd.y, -rd.z);
+			Vector3 vector = get_hit_point(my_ray_hit.ray_hit.ray);
 
 			float n1 = my_ray_hit.ior;
 			float n2 = ((n1 == IOR_AIR) ? material->ior : IOR_AIR);
@@ -293,7 +303,6 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 			Vector3 rr = (2.0f * (normal_v.DotProduct(rv))) * normal_v - rv;
 
 			float tmp = 1.0f - SQR(n_divided) * (1.0f - SQR(cos_01));
-			Vector3 vector = get_hit_point(my_ray_hit.ray_hit.ray);
 
 			// Generate reflected ray
 			myReflectedRTCRayHit = createRayWithEmptyHitAndIor(vector, rr, FLT_MAX, 0.001f, n2);
@@ -327,21 +336,20 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 			if (emmision.r != 0 && emmision.g != 0 && emmision.b != 0) {
 				return emmision;
 			}
-			for (int i = 0; i < 100; i++)
-			{
-				Vector3 omegaI = sampleHemisphere(normal_v);
-				//float inversePdf = 2 * M_PI;
 
-				float inversePdf = M_PI / normal_v.DotProduct(omegaI);
+			Vector3 r_d = Vector3(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+			Vector3 r_v = Vector3(-r_d.x, -r_d.y, -r_d.z);
 
-				Color4f l_i = trace_ray(createRayWithEmptyHitAndIor(getInterpolatedPoint(my_ray_hit.ray_hit.ray), omegaI, FLT_MAX, 0.1f, IOR_AIR), depth - 1);
-				Color4f fR = Color4f{ material->diffuse.x, material->diffuse.y ,material->diffuse.z,1 } *(1 / M_PI);
-				Vector3 intersectionPoint = Vector3(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
 
-				Color4f resultColor = l_i * fR * omegaI.DotProduct(normal_v) * inversePdf * getGeometryTerm(omegaI, context, l_d, intersectionPoint, normal_v);
-				return resultColor;
-			}
+			Vector3 omegaI = sampleHemisphere(normal_v);
+			float pdf = 1 / (2 * M_PI);
 
+			Color4f l_i = trace_ray(createRayWithEmptyHitAndIor(getInterpolatedPoint(my_ray_hit.ray_hit.ray), omegaI, FLT_MAX, 0.001f, IOR_AIR), depth - 1);
+			Vector3 fR = material->diffuse / M_PI;
+
+			Color4f final_color = fR * l_i * (normal_v.DotProduct(omegaI) / pdf);
+
+			return final_color;
 			break;
 		}
 		default:
@@ -354,43 +362,42 @@ Color4f Raytracer::trace_ray(MyRTCRayHit my_ray_hit, int depth) {
 		}
 		}
 
-		return Color4f(0.0f, 0.0f, 0.0f, 1.0f);
+		//return Color4f(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 	else {
-		Color4f bck = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
-		//return bck;
+		Color4f background = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
 
-		return Color4f(getSRGBColorValueForComponent(bck.r), getSRGBColorValueForComponent(bck.g), getSRGBColorValueForComponent(bck.b), 1.0f);
+		return Color4f(getSRGBColorValueForComponent(background.r), getSRGBColorValueForComponent(background.g), getSRGBColorValueForComponent(background.b), 1.0f);
 	}
 }
 
 
 
-float Raytracer::getGeometryTerm(Vector3 omegaI, RTCIntersectContext context, Vector3 vectorToLight, Vector3 intersectionPoint, Vector3 normal) {
-	float randomX = Random() * 100 - 50; //generate in interval -50 and 50
-	float randomY = Random() * 100 - 50; //generate in interval -50 and 50
-	Vector3 sourcePoint(randomX, randomY, 489); //489 heaight of source
-
-	MyRTCRayHit rayToSource = createRayWithEmptyHitAndIor(intersectionPoint, (sourcePoint - intersectionPoint).Normalize(), FLT_MAX, 0.1f, IOR_AIR);
-	rtcIntersect1(scene_, &context, &(rayToSource.ray_hit));
-
-	double geometryTerm = 0.0;
-
-	vectorToLight = (sourcePoint - intersectionPoint);
-	float dstToLight = (vectorToLight).L2Norm();
-	(vectorToLight).Normalize();
-
-	double visibilityTerm = castShadowRay(context, vectorToLight, dstToLight, intersectionPoint, normal);
-
-	if (visibilityTerm == 1)
-	{
-		Vector3 sourceNormal{ 0, 0, -1 };
-
-		geometryTerm = ((normal.DotProduct(omegaI) *  sourceNormal.DotProduct(-omegaI))
-			/ SQR((intersectionPoint - sourcePoint).L2Norm())) * 10000;
-	}
-	return geometryTerm;
-}
+//float Raytracer::getGeometryTerm(Vector3 omegaI, RTCIntersectContext context, Vector3 vectorToLight, Vector3 intersectionPoint, Vector3 normal) {
+//	float randomX = Random() * 100 - 50; //generate in interval -50 and 50
+//	float randomY = Random() * 100 - 50; //generate in interval -50 and 50
+//	Vector3 sourcePoint(randomX, randomY, 489); //489 heaight of source
+//
+//	RTCRayHitWithIor rayToSource = createRayWithEmptyHitAndIor(intersectionPoint, (sourcePoint - intersectionPoint).Normalize(), FLT_MAX, 0.1f, IOR_AIR);
+//	rtcIntersect1(scene_, &context, &(rayToSource.ray_hit));
+//
+//	double geometryTerm = 0.0;
+//
+//	vectorToLight = (sourcePoint - intersectionPoint);
+//	float dstToLight = (vectorToLight).L2Norm();
+//	(vectorToLight).Normalize();
+//
+//	double visibilityTerm = castShadowRay(context, vectorToLight, dstToLight, intersectionPoint, normal);
+//
+//	if (visibilityTerm == 1)
+//	{
+//		Vector3 sourceNormal{ 0, 0, -1 };
+//
+//		geometryTerm = ((normal.DotProduct(omegaI) *  sourceNormal.DotProduct(-omegaI))
+//			/ SQR((intersectionPoint - sourcePoint).L2Norm())) * 10000;
+//	}
+//	return geometryTerm;
+//}
 
 float  Raytracer::castShadowRay(RTCIntersectContext context, Vector3 vectorToLight, float dstToLight, Vector3 intersectionPoint, Vector3 normal) {
 	RTCRay rayFromIntersectPointToLight = createRay(intersectionPoint, vectorToLight, dstToLight, 0.1f);
@@ -415,25 +422,26 @@ Vector3 Raytracer::sampleHemisphere(Vector3 normal) {
 	float z = 1 - 2 * randomV;
 
 	Vector3 omegaI = Vector3{ x, y, z };
+	omegaI.Normalize();
 
-	if (omegaI.DotProduct(normal)) {
+	if (omegaI.DotProduct(normal) < 0) {
 		omegaI *= -1;
 	}
 	return omegaI;
 }
 
-float Raytracer::linearToSrgb(float color) {
-
-	/*if (color <= 0.0f)
-		return 0.0f;
-	else if (color >= 1.0f)
-		return 1.0f;
-	else */if (color < 0.0031308f)
-		return color * 12.92f;
-	else
-		return std::powf(color, 1.0f / 2.4f) * 1.055f - 0.055f;
-
-}
+//float Raytracer::linearToSrgb(float color) {
+//
+//	/*if (color <= 0.0f)
+//		return 0.0f;
+//	else if (color >= 1.0f)
+//		return 1.0f;
+//	else */if (color < 0.0031308f)
+//		return color * 12.92f;
+//	else
+//		return std::powf(color, 1.0f / 2.4f) * 1.055f - 0.055f;
+//
+//}
 
 
 int Raytracer::Ui()

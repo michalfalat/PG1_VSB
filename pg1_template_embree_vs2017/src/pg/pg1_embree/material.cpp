@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "material.h"
+#include "utils.h"
 
 const char Material::kDiffuseMapSlot = 0;
 const char Material::kSpecularMapSlot = 1;
@@ -94,28 +95,29 @@ Vector3 Material::doDiffuse(const Coord2f * tex_coord) const
 		if (texture) {
 			Color4f texel = texture->get_texel(tex_coord->u, tex_coord->v);
 			return Vector3{ texel.r, texel.g, texel.b };
+			//return Vector3(getSRGBColorValueForComponent(texel.r), getSRGBColorValueForComponent(texel.g), getSRGBColorValueForComponent(texel.b));
 		}
 
 		return this->diffuse;
 	}
 }
 
-Vector3 Material::getDiffuse(Coord2f tex_coord) {
+//Vector3 Material::doDiffuse(Coord2f tex_coord) {
+//
+//	if (textures_[kDiffuseMapSlot]) {
+//		Color4f color = textures_[kDiffuseMapSlot]->get_texel(tex_coord.u, 1 - tex_coord.v);
+//		return Vector3{ color.r, color.g, color.b };
+//	}
+//
+//	return this->diffuse;
+//}
 
-	if (textures_[kDiffuseMapSlot]) {
-		Color4f color = textures_[kDiffuseMapSlot]->get_texel(tex_coord.u, 1 - tex_coord.v);
-		return Vector3{ color.r, color.g, color.b };
-	}
-
-	return this->diffuse;
-}
-
-Vector3 Material::getSpecular(Coord2f tex_coord) {
-
-	if (textures_[kSpecularMapSlot]) {
-		Color4f color = textures_[kDiffuseMapSlot]->get_texel(tex_coord.u, 1 - tex_coord.v);
-		return Vector3{ color.r, color.g, color.b };
-	}
-
-	return this->specular;
-}
+//Vector3 Material::getSpecular(Coord2f tex_coord) {
+//
+//	if (textures_[kSpecularMapSlot]) {
+//		Color4f color = textures_[kDiffuseMapSlot]->get_texel(tex_coord.u, 1 - tex_coord.v);
+//		return Vector3{ color.r, color.g, color.b };
+//	}
+//
+//	return this->specular;
+//}

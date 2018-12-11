@@ -28,7 +28,7 @@ struct RTC_ALIGN( 16 ) Color4f
 
 struct Color3f { float r, g, b; };
 
-struct MyRTCRayHit {
+struct RTCRayHitWithIor {
 	RTCRayHit ray_hit;
 	float ior = IOR_AIR;
 };

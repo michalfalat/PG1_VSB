@@ -107,7 +107,7 @@ float getSRGBColorValueForComponent(float colorComponent);
 RTCHit createEmptyHit();
 RTCRay createRay(Vector3 origin, Vector3 dir, float tfar = FLT_MAX, float tnear = FLT_MIN);
 
-MyRTCRayHit createRayWithEmptyHitAndIor(Vector3 origin, Vector3 dir, float tfar, float tnear, float ior);
+RTCRayHitWithIor createRayWithEmptyHitAndIor(Vector3 origin, Vector3 dir, float tfar, float tnear, float ior);
 
 
 #endif
