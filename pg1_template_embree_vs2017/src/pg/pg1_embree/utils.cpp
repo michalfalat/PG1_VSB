@@ -212,6 +212,14 @@ float getSRGBColorValueForComponent(float colorComponent) {
 	return colorComponent <= 0.0031308f ? 12.92f * colorComponent : (1 + 0.055f) * pow(colorComponent, colorFactor) - 0.055f;
 }
 
+float changeGamma(float value, float coef ) {
+	return value * coef;
+}
+
+Color4f changeGamma(Color4f value, float coef ) {
+	return value * coef;
+}
+
 RTCHit createEmptyHit() {
 	RTCHit hit;
 	hit.geomID = RTC_INVALID_GEOMETRY_ID;

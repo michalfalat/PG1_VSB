@@ -33,7 +33,7 @@
 */
 
 
-enum  Shader {NORMAL = 1, LAMBERT = 2, PHONG = 3, GLASS = 4, PATHTRACER = 5 };
+enum  Shader {NORMAL = 1, LAMBERT = 2, PHONG = 3, GLASS = 4, PATHTRACER = 5, MIRROR = 6, CLEAR_GLASS = 7 };
 class Material
 {
 public:	

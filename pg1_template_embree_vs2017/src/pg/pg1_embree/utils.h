@@ -103,7 +103,9 @@ char * RTrim( char * s );
 char * Trim( char *s );
 
 float getLRGBColorValueForComponent(float colorComponent);
-float getSRGBColorValueForComponent(float colorComponent);
+float getSRGBColorValueForComponent(float colorComponent); 
+float changeGamma(float value, float coef = 1);
+Color4f changeGamma(Color4f value, float coef = 1);
 RTCHit createEmptyHit();
 RTCRay createRay(Vector3 origin, Vector3 dir, float tfar = FLT_MAX, float tnear = FLT_MIN);
 

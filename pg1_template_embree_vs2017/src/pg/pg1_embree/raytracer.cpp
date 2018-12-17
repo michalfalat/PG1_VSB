@@ -27,13 +27,13 @@ Raytracer::Raytracer(const int width, const int height,
 	background_ = Background("../../../data/background.jpg");
 }
 
-Vector3 get_hit_point(const RTCRay &ray)
-{
-	return Vector3(
-		ray.org_x + ray.tfar * ray.dir_x,
-		ray.org_y + ray.tfar * ray.dir_y,
-		ray.org_z + ray.tfar * ray.dir_z);
-}
+//Vector3 get_hit_point(const RTCRay &ray)
+//{
+//	return Vector3(
+//		ray.org_x + ray.tfar * ray.dir_x,
+//		ray.org_y + ray.tfar * ray.dir_y,
+//		ray.org_z + ray.tfar * ray.dir_z);
+//}
 
 
 
@@ -177,21 +177,21 @@ Color4f Raytracer::get_pixel(const int x, const int y, const float t)
 	float offsetY = -0.5f;
 	float offsetAddition = 1.0f / size;
 
-	int samples = 5;
+	/*int samples = 15;
 
-	//#pragma omp parallel for schedule(dynamic, 5) shared(colorSum)
-	//	for (int i = 0; i < samples; i++) {
-	//		float offsetX = (x + Random());
-	//		float offsetY = (y + Random());
-	//
-	//		my_ray_hit.ray_hit.ray = camera_.GenerateRay(offsetX, offsetY);
-	//		my_ray_hit.ray_hit.hit = createEmptyHit();
-	//		my_ray_hit.ior = IOR_AIR;
-	//		Color4f traced = trace_ray(my_ray_hit, 5);
-	//		colorSum += traced;
-	//	}
-	//
-	//	return colorSum / static_cast<float>(samples);
+	#pragma omp parallel for schedule(dynamic, 5) shared(colorSum)
+		for (int i = 0; i < samples; i++) {
+			float offsetX = (x + Random());
+			float offsetY = (y + Random());
+	
+			my_ray_hit.ray_hit.ray = camera_.GenerateRay(offsetX, offsetY);
+			my_ray_hit.ray_hit.hit = createEmptyHit();
+			my_ray_hit.ior = IOR_AIR;
+			Color4f traced = trace_ray(my_ray_hit, 5);
+			colorSum += traced;
+		}
+	
+		return colorSum / static_cast<float>(samples);*/
 	offsetX = (x + Random());
 	offsetY = (y + Random());
 
@@ -235,7 +235,7 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 		//const Triangle & triangle = surfaces_[ray_hit]
 		Vector3 l_position = Vector3(-50, -50, 300);
 
-		Vector3 p = get_hit_point(my_ray_hit.ray_hit.ray);
+		Vector3 p = getInterpolatedPoint(my_ray_hit.ray_hit.ray);
 		Vector3 l_d = l_position - p;
 		l_d.Normalize();
 
@@ -246,7 +246,10 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 		}
 
 		if (depth <= 0) {
-			Color4f background = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+			Color4f background = changeGamma(background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z));
+
+
+
 			//return bck;
 			//return Color4f(1.0f,bck.g, bck.b,1.0f);
 			return Color4f(getSRGBColorValueForComponent(background.r), getSRGBColorValueForComponent(background.g), getSRGBColorValueForComponent(background.b), 1.0f);
@@ -288,11 +291,11 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 		}
 		case Shader::GLASS:
 		{
-			RTCRayHitWithIor myRefractedRTCRayHit, myReflectedRTCRayHit;
+			RTCRayHitWithIor refracted_ray_hit, reflected_ray_hit;
 
 			Vector3 diffuse = material->diffuse;
 			Vector3 rv = Vector3(-rd.x, -rd.y, -rd.z);
-			Vector3 vector = get_hit_point(my_ray_hit.ray_hit.ray);
+			Vector3 vector = getInterpolatedPoint(my_ray_hit.ray_hit.ray);
 
 			float n1 = my_ray_hit.ior;
 			float n2 = ((n1 == IOR_AIR) ? material->ior : IOR_AIR);
@@ -302,31 +305,33 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 
 			Vector3 rr = (2.0f * (normal_v.DotProduct(rv))) * normal_v - rv;
 
-			float tmp = 1.0f - SQR(n_divided) * (1.0f - SQR(cos_01));
+			float refractComponent = 1.0f - SQR(n_divided) * (1.0f - SQR(cos_01));
 
-			// Generate reflected ray
-			myReflectedRTCRayHit = createRayWithEmptyHitAndIor(vector, rr, FLT_MAX, 0.001f, n2);
+			
+			reflected_ray_hit = createRayWithEmptyHitAndIor(vector, rr, FLT_MAX, 0.001f, n2);
 
-			if (tmp > 0) {
-				float cos_02 = sqrt(tmp);
+			if (refractComponent > 0) {
+				float cos_02 = sqrt(refractComponent);
 				Vector3 rl = (n_divided * rd) + ((n_divided * cos_01 - cos_02) * normal_v);
 				// Fresnel
 				float Rs = SQR((n2 * cos_02 - n1 * cos_01) / (n2 * cos_02 + n1 * cos_01));
 				float Rp = SQR((n2 * cos_01 - n1 * cos_02) / (n2 * cos_01 + n1 * cos_02));
-				float R = 0.5f * (Rs + Rp);
+				float part_reflect = 0.5f * (Rs + Rp);
 
 				// Calculate coefficients
-				float coefRefract = 1.0f - R;
+				float part_refract = 1.0f - part_reflect;
 
 				// Generate refracted ray
-				myRefractedRTCRayHit = createRayWithEmptyHitAndIor(vector, rl, FLT_MAX, 0.001f, n2);
+				refracted_ray_hit = createRayWithEmptyHitAndIor(vector, rl, FLT_MAX, 0.001f, n2);
 
-				return (diffuse * trace_ray(myReflectedRTCRayHit, depth - 1) * R) + (diffuse * trace_ray(myRefractedRTCRayHit, depth - 1) * coefRefract);
+				return (diffuse * trace_ray(reflected_ray_hit, depth - 1) * part_reflect) + (diffuse * trace_ray(refracted_ray_hit, depth - 1) * part_refract);
+
+				//FOR DEBUG
 				//return diffuse * trace_ray(myReflectedRTCRayHit, depth - 1);
 				//return diffuse * trace_ray(myRefractedRTCRayHit, depth - 1) * coefRefract;
 			}
 			else {
-				return diffuse * trace_ray(myReflectedRTCRayHit, depth - 1);
+				return diffuse * trace_ray(reflected_ray_hit, depth - 1);
 			}
 
 		}
@@ -352,6 +357,68 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 			return final_color;
 			break;
 		}
+		case Shader::MIRROR:
+		{
+			RTCRayHitWithIor reflected_ray_hit;
+
+			Vector3 diffuse = material->diffuse;
+			Vector3 rd = Vector3(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+			Vector3 rv = Vector3(-rd.x, -rd.y, -rd.z);
+
+			float n1 = my_ray_hit.ior;
+			float n2 = ((n1 == IOR_AIR) ? material->ior : IOR_AIR);
+
+			Vector3 rr = (2.0f * (normal_v.DotProduct(rv))) * normal_v - rv;
+			Vector3 vector = getInterpolatedPoint(my_ray_hit.ray_hit.ray);
+
+
+			reflected_ray_hit = createRayWithEmptyHitAndIor(vector, rr, FLT_MAX, 0.001f, n2);
+
+			return diffuse * trace_ray(reflected_ray_hit, depth - 1);
+		}
+		case Shader::CLEAR_GLASS:
+		{
+			RTCRayHitWithIor refracted_ray_hit;
+
+			Vector3 diffuse = material->diffuse;
+			Vector3 rv = Vector3(-rd.x, -rd.y, -rd.z);
+			Vector3 vector = getInterpolatedPoint(my_ray_hit.ray_hit.ray);
+
+			float n1 = my_ray_hit.ior;
+			float n2 = ((n1 == IOR_AIR) ? material->ior : IOR_AIR);
+
+			float n_divided = n1 / n2;
+			float cos_01 = (normal_v.DotProduct(rv));
+
+			Vector3 rr = (2.0f * (normal_v.DotProduct(rv))) * normal_v - rv;
+
+			float refractComponent = 1.0f - SQR(n_divided) * (1.0f - SQR(cos_01));
+			if (refractComponent > 0) {
+				float cos_02 = sqrt(refractComponent);
+				Vector3 rl = (n_divided * rd) + ((n_divided * cos_01 - cos_02) * normal_v);
+				// Fresnel
+				float Rs = SQR((n2 * cos_02 - n1 * cos_01) / (n2 * cos_02 + n1 * cos_01));
+				float Rp = SQR((n2 * cos_01 - n1 * cos_02) / (n2 * cos_01 + n1 * cos_02));
+				float part_reflect = 0.5f * (Rs + Rp);
+
+				// Calculate coefficients
+				float part_refract = 1.0f - part_reflect;
+
+				// Generate refracted ray
+				refracted_ray_hit = createRayWithEmptyHitAndIor(vector, rl, FLT_MAX, 0.001f, n2);
+
+				return (diffuse * trace_ray(refracted_ray_hit, depth - 1) );
+
+				//FOR DEBUG
+				//return diffuse * trace_ray(myReflectedRTCRayHit, depth - 1);
+				//return diffuse * trace_ray(myRefractedRTCRayHit, depth - 1) * coefRefract;
+			}
+			else {
+				Color4f background = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+
+				return Color4f(getSRGBColorValueForComponent(background.r), getSRGBColorValueForComponent(background.g), getSRGBColorValueForComponent(background.b), 1.0f);
+			}
+		}
 		default:
 		{
 			Vector3 diff = material->doDiffuse(&tex_coord);
@@ -365,7 +432,7 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 		//return Color4f(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 	else {
-		Color4f background = background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z);
+		Color4f background = changeGamma(background_.GetBackground(my_ray_hit.ray_hit.ray.dir_x, my_ray_hit.ray_hit.ray.dir_y, my_ray_hit.ray_hit.ray.dir_z));
 
 		return Color4f(getSRGBColorValueForComponent(background.r), getSRGBColorValueForComponent(background.g), getSRGBColorValueForComponent(background.b), 1.0f);
 	}
@@ -412,6 +479,7 @@ Vector3 Raytracer::getInterpolatedPoint(RTCRay ray) {
 			ray.org_z + ray.tfar * ray.dir_z
 	};
 }
+
 
 Vector3 Raytracer::sampleHemisphere(Vector3 normal) {
 	float randomU = Random();
