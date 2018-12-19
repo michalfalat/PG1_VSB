@@ -27,13 +27,6 @@ Raytracer::Raytracer(const int width, const int height,
 	background_ = Background("../../../data/background.jpg");
 }
 
-//Vector3 get_hit_point(const RTCRay &ray)
-//{
-//	return Vector3(
-//		ray.org_x + ray.tfar * ray.dir_x,
-//		ray.org_y + ray.tfar * ray.dir_y,
-//		ray.org_z + ray.tfar * ray.dir_z);
-//}
 
 
 
@@ -233,7 +226,7 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 		Material * material = (Material *)(rtcGetGeometryUserData(geometry));
 
 		//const Triangle & triangle = surfaces_[ray_hit]
-		Vector3 l_position = Vector3(-50, -50, 300);
+		Vector3 l_position = Vector3(50, -50, 300);
 
 		Vector3 p = getInterpolatedPoint(my_ray_hit.ray_hit.ray);
 		Vector3 l_d = l_position - p;
@@ -266,7 +259,7 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 		case Shader::LAMBERT:
 		{
 			Vector3 diffuse = material->doDiffuse(&tex_coord);
-			float dot = l_d.PosDotProduct(normal_v);
+			float dot = l_d.DotProduct(normal_v);
 			Vector3 lambert_color = max(0, dot) * diffuse;
 			return Color4f(lambert_color.x, lambert_color.y, lambert_color.z, 1.0f);
 			break;
@@ -276,14 +269,15 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 			Vector3 v = Vector3(-my_ray_hit.ray_hit.ray.dir_x, -my_ray_hit.ray_hit.ray.dir_y, -my_ray_hit.ray_hit.ray.dir_z);
 			Vector3 l_r = reflect(l_d, normal_v);
 
+			float normal_dotProduct_l_d = normal_v.DotProduct(l_d);
 			// get diffuse
 			Vector3 diffuse = material->doDiffuse(&tex_coord);
 
 			const float enlight = trace_shadow_ray(p, l_d, l_d.L2Norm(), context);
 			Color4f final_color = Color4f{
-				(material->ambient.x + enlight * ((diffuse.x * normal_v.DotProduct(l_d)) + pow(material->specular.x * v.DotProduct(l_r), material->shininess))),
-				(material->ambient.y + enlight * ((diffuse.y * normal_v.DotProduct(l_d)) + pow(material->specular.y * v.DotProduct(l_r), material->shininess))),
-				(material->ambient.z + enlight * ((diffuse.z * normal_v.DotProduct(l_d)) + pow(material->specular.z * v.DotProduct(l_r), material->shininess))),
+				(material->ambient.x + enlight * ((diffuse.x * normal_dotProduct_l_d) + pow(material->specular.x * v.DotProduct(l_r), material->shininess))),
+				(material->ambient.y + enlight * ((diffuse.y * normal_dotProduct_l_d) + pow(material->specular.y * v.DotProduct(l_r), material->shininess))),
+				(material->ambient.z + enlight * ((diffuse.z * normal_dotProduct_l_d) + pow(material->specular.z * v.DotProduct(l_r), material->shininess))),
 				1 } * material->reflectivity;
 			return final_color;
 
@@ -320,8 +314,8 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 
 				// Calculate coefficients
 				float part_refract = 1.0f - part_reflect;
-
-				// Generate refracted ray
+							   
+				// refracted ray
 				refracted_ray_hit = createRayWithEmptyHitAndIor(vector, rl, FLT_MAX, 0.001f, n2);
 
 				return (diffuse * trace_ray(reflected_ray_hit, depth - 1) * part_reflect) + (diffuse * trace_ray(refracted_ray_hit, depth - 1) * part_refract);
@@ -422,7 +416,7 @@ Color4f Raytracer::trace_ray(RTCRayHitWithIor my_ray_hit, int depth) {
 		default:
 		{
 			Vector3 diff = material->doDiffuse(&tex_coord);
-			float dot = l_d.PosDotProduct(normal_v);
+			float dot = l_d.DotProduct(normal_v);
 			Vector3 temp = max(0, dot) * diff;
 			return Color4f(temp.x, temp.y, temp.z, 1.0f);
 			break;
